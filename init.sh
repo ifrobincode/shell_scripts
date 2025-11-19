@@ -45,9 +45,9 @@ show_system_info() {
 show_menu() {
     echo -e "${YELLOW}========== Linux 系统初始化菜单 ==========${NC}"
     echo "1) 关闭防火墙和SELinux"
-    echo "2) 执行初始化任务2（预留）"
-    echo "3) 执行初始化任务3（预留）"
-    echo "4) 执行初始化任务4（预留）"
+    echo "2) 添加EPEL源"
+    echo "3) 安装常用软件包"
+    echo "4) 优化系统与软件包配置"
     echo "5) 执行初始化任务5（预留）"
     echo "q) 退出脚本"
     echo -e "${YELLOW}==========================================${NC}"
