@@ -100,7 +100,7 @@ task2() {
     echo -e "${YELLOW}>>> 检查系统发行版版本...${NC}"
 
     # 从系统文件中读取发行版版本（如：8、9）
-    if [ -f /etc/os-release ]; then
+    if [[ -f /etc/os-release ]]; then
         . /etc/os-release
         os_ver=$(echo $VERSION_ID | cut -d'.' -f1)
         echo -e "检测到系统版本：${GREEN}${NAME} ${VERSION_ID}${NC}"
