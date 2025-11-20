@@ -45,7 +45,7 @@ show_system_info() {
 show_menu() {
     echo -e "${YELLOW}========== Linux 系统初始化菜单 ==========${NC}"
     echo "1) 关闭防火墙和SELinux"
-    echo "2) 添加EPEL源"
+    echo "2) 添加EPEL仓库源并更新dnf元数据缓存"
     echo "3) 安装常用软件包"
     echo "4) 优化系统与软件包配置"
     echo "5) 执行初始化任务5（预留）"
@@ -94,10 +94,62 @@ task1() {
 
 
 task2() {
-    echo -e "${GREEN}执行任务2：例如配置主机名、时区等${NC}"
-    # 示例操作：
-    # timedatectl set-timezone Asia/Shanghai
+    echo -e "${GREEN}执行任务2：添加EPEL仓库源，并更新dnf元数据缓存${NC}"
+    echo
+
+    echo -e "${YELLOW}>>> 检查系统发行版版本...${NC}"
+
+    # 从系统文件中读取发行版版本（如：8、9）
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        os_ver=$(echo $VERSION_ID | cut -d'.' -f1)
+        echo -e "检测到系统版本：${GREEN}${NAME} ${VERSION_ID}${NC}"
+    else
+        echo -e "${RED}无法检测系统版本，无法继续安装EPEL！${NC}"
+        return
+    fi
+
+    echo
+
+    # ===========================
+    # 检查 EPEL 是否已安装
+    # ===========================
+    echo -e "${YELLOW}>>> 检查EPEL仓库是否已安装...${NC}"
+
+    if dnf repolist | grep -qi epel; then
+        echo -e "${GREEN}EPEL仓库已存在，无需重复添加。${NC}"
+    else
+        echo -e "${YELLOW}EPEL仓库未发现，开始安装...${NC}"
+
+        # 根据版本自动选择 EPEL 包
+        epel_pkg="epel-release"
+
+        # 安装 epel-release 包
+        if dnf install -y ${epel_pkg}; then
+            echo -e "${GREEN}EPEL仓库已成功添加。${NC}"
+        else
+            echo -e "${RED}EPEL添加失败，请检查网络或仓库可用性。${NC}"
+            return
+        fi
+    fi
+
+    echo
+
+    # ===========================
+    # 更新 dnf 元数据缓存
+    # ===========================
+    echo -e "${YELLOW}>>> 正在更新dnf元数据缓存（dnf makecache）...${NC}"
+
+    if dnf makecache -y; then
+        echo -e "${GREEN}dnf元数据缓存更新完成。${NC}"
+    else
+        echo -e "${RED}dnf元数据更新失败，请检查网络！${NC}"
+    fi
+
+    echo
+    echo -e "${GREEN}任务2执行完成：EPEL仓库可用，dnf缓存已更新。${NC}"
 }
+
 
 task3() {
     echo -e "${GREEN}执行任务3：例如创建常用用户和目录${NC}"
