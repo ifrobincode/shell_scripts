@@ -155,7 +155,7 @@ task3() {
     echo -e "${YELLOW}开始安装常用工具...${NC}"
 
     # 建议工具列表（可修改）
-    TOOLS="tree vim bash-completion wget bind-utils lrzsz tcpdump git-all"
+    TOOLS="tree vim bash-completion wget bind-utils lrzsz tcpdump git-all iputils"
 
     echo -e "${BLUE}将要安装以下工具：${NC}"
     echo "$TOOLS"
