@@ -4,7 +4,7 @@
 #
 # Linux 系统初始化菜单脚本（增强版）
 # 作者：Robin
-# 版本：v1.1
+# 版本：v2025.12.02
 # 功能：显示系统信息 + 提供初始化任务菜单（含预留任务项）
 #
 
@@ -36,6 +36,16 @@ show_system_info() {
 
     # 获取主机名
     echo -e "主机名     : ${GREEN}$(hostname)${NC}"
+
+    # 获取主机主要 IP 地址（排除 lo）
+    main_ip=$(ip -o -4 addr show scope global | awk '{print $4}' | head -n 1)
+
+    if [[ -n "$main_ip" ]]; then
+        echo -e "IP 地址     : ${GREEN}${main_ip}${NC}"
+    else
+        echo -e "IP 地址     : ${RED}未检测到有效 IPv4 地址${NC}"
+    fi
+
     echo
 }
 
@@ -152,12 +162,12 @@ task2() {
 
 
 task3() {
-    echo -e "${YELLOW}开始安装常用工具...${NC}"
+    echo -e "${GREEN}执行任务3：开始安装常用工具${NC}"
 
     # 建议工具列表（可修改）
-    TOOLS="tree vim bash-completion wget bind-utils lrzsz tcpdump git-all iputils"
+    TOOLS="tree vim bash-completion wget bind-utils lrzsz tcpdump git iputils lsof htop helix"
 
-    echo -e "${BLUE}将要安装以下工具：${NC}"
+    echo -e "${YELLOW}将要安装以下工具：${NC}"
     echo "$TOOLS"
     echo
 
@@ -168,25 +178,84 @@ task3() {
     fi
 
     # 更新元数据缓存（只更新一次）
-    echo -e "${BLUE}更新dnf元数据缓存...${NC}"
+    echo -e "${YELLOW}更新dnf元数据缓存...${NC}"
     dnf makecache -y
 
     # 安装工具
-    echo -e "${BLUE}开始安装软件包...${NC}"
+    echo -e "${YELLOW}开始安装软件包...${NC}"
     dnf install -y $TOOLS
 
     # 检查是否安装成功
     if [ $? -eq 0 ]; then
-        echo -e "${GREEN}常用工具安装完成！${NC}"
+        echo -e "${GREEN}任务3执行完成：常用工具安装完成。${NC}"
     else
         echo -e "${RED}安装过程中出现错误，请检查网络或软件源配置！${NC}"
     fi
 }
 
 task4() {
-    echo -e "${GREEN}执行任务4：例如优化系统参数sysctl${NC}"
-    # 示例操作：
-    # sysctl -w net.ipv4.ip_forward=1
+    echo -e "${GREEN}执行任务4：优化系统及软件包配置。${NC}"
+
+    echo -e "\n${YELLOW}>>> 1. 配置 history 扩展功能${NC}"
+    HISTORY_FILE="/etc/profile.d/history.sh"
+
+    cat > $HISTORY_FILE <<EOF
+# 为 history 添加时间戳及用户名
+export HISTTIMEFORMAT="%F %T $(whoami)  "
+# 保存更多历史命令。内存记录条目与历史命令文件（~/.bash_history）记录条目
+export HISTSIZE=5000
+export HISTFILESIZE=10000
+# 忽略重复命令
+export HISTCONTROL=ignoredups
+EOF
+
+    echo -e "${GREEN}history 扩展功能已配置（重新登录后生效）${NC}"
+
+    echo -e "\n${YELLOW}>>> 2. 配置常用别名 alias${NC}"
+    ALIAS_FILE="/etc/profile.d/alias.sh"
+
+    cat > $ALIAS_FILE <<EOF
+# 常用别名，提高效率
+alias cdnet='cd /etc/NetworkManager/system-connections/'
+EOF
+
+    echo -e "${GREEN}常用 alias 已设置${NC}"
+
+    echo -e "\n${YELLOW}>>> 3. 设置 vim 默认优化配置${NC}"
+
+    # 推荐的本地 Vim 配置文件（不会覆盖系统自带 /etc/vimrc）
+    VIMRC_LOCAL_FILE="/etc/vimrc"
+
+    # 追加写入优化配置
+    cat >> $VIMRC_LOCAL_FILE <<EOF
+
+" ===== Custom Vim Optimization (From Init Script) =====
+set number              " 显示行号
+set expandtab           " 将 tab 转为空格
+set tabstop=4           " tab 显示为4个空格
+set shiftwidth=4        " 自动缩进宽度为4
+set autoindent          " 自动缩进
+set cursorline          " 光标所在行显示下划线提示
+set paste               " 保留格式
+syntax on               " 语法高亮
+EOF
+
+    echo -e "${GREEN}vim 优化已追加到 /etc/vimrc${NC}"
+
+    echo -e "\n${YELLOW}>>> 4. 提升命令行提示符可读性${NC}"
+
+    PS1_FILE="/etc/profile.d/ps1.sh"
+
+    cat > $PS1_FILE <<EOF
+# 自定义 PS1 提示符：
+# [时间(绿) 用户名(黄)@主机(白) 目录(粉)]#
+export PS1="\\[\\e[37m\\][\\[\\e[32m\\]\\t \\[\\e[33m\\]\\u\\[\\e[37m\\]@\\h \\[\\e[35m\\]\\W\\[\\e[37m\\]]\\[\\e[0m\\]# "
+EOF
+
+    echo -e "${YELLOW}PS1 提示符增强已配置${NC}"
+
+    echo -e "\n${GREEN}任务4执行完成：系统与软件包配置已优化。${NC}"
+    echo -e "${YELLOW}提示：所有优化在重新登录终端后生效。${NC}"
 }
 
 task5() {
@@ -220,5 +289,7 @@ while true; do
             echo -e "${RED}无效选项，请重新输入。${NC}"
             ;;
     esac
+    # === 新增分隔区 ===
+    echo -e "\n\n${YELLOW}---- 返回主菜单 ----${NC}\n"
     echo
 done
