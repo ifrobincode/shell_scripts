@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# ============================== 颜色与样式定义 ===============================
+# ----------------------------- 颜色与样式定义 -----------------------------
 
 # --- 前景色（文本颜色）---
 # 基础色（0-7）
@@ -85,7 +85,7 @@ show_system_info() {
     local ip_mask
     ip_mask=$(ip -4 addr show scope global | awk '/inet / {print $2; exit}' 2>/dev/null)
 
-    echo "===================== 系统信息 ====================="
+    echo -e "${YELLOW}===================== 系统信息 =====================${NC}"
     echo -e "发行版信息 : ${CYAN}${PRETTY_NAME}${NC}"
     echo -e "内核版本   : ${CYAN}$(uname -r)${NC}"
     echo -e "主机名     : ${CYAN}$(hostname)${NC}"
@@ -230,38 +230,47 @@ action_enable_extra_repos() {
 
 # -------------------------- 安装常用软件包 ----------------------------------
 action_install_packages() {
-    echo -e "${BLUE}>>> 正在安装常用工具软件包...${NC}"
+    echo -e "${BLUE}>>> 正在安装常用软件包...${NC}"
 
     case "$OS_FAMILY" in
         rocky|centos|rhel)
-            echo -e "${GREEN}→ 更新 dnf 元数据缓存...${NC}"
-            if ! dnf makecache; then
-                echo -e "${RED}✗ dnf 元数据缓存更新失败。${NC}"
-                return 1
+            # 更新元数据缓存
+            echo -e "${YELLOW}→ 正在更新软件包缓存...${NC}"
+            if dnf makecache --assumeyes; then
+                echo -e "${GREEN}✓ 软件源缓存已更新。${NC}"
+            else
+                echo -e "${YELLOW}⚠ 缓存更新失败，但可能不影响使用。${NC}"
             fi
 
-            echo -e "${GREEN}→ 安装软件包...${NC}"
+            # 安装常用软件包
+            echo -e "${YELLOW}→ 安装常用软件包...${NC}"
             if ! dnf install -y "${RHEL_PACKAGES[@]}"; then
                 echo -e "${RED}✗ 部分软件包安装失败，请检查网络、仓库或包名。${NC}"
                 return 1
             fi
-            echo -e "${GREEN}✓ 常用工具软件包如下：${NC}"
+
+            echo -e "${GREEN}✓ 已安装常用软件包如下：${NC}"
             printf "  ${CYAN}%s${NC}\n" "${RHEL_PACKAGES[@]}"
             ;;
 
         ubuntu|debian)
-            echo -e "${GREEN}→ 更新 APT 软件包列表...${NC}"
-            if ! apt update; then
-                echo -e "${RED}✗ APT 更新失败。${NC}"
+            # 更新软件包列表
+            echo -e "${YELLOW}→ 正在更新软件包缓存...${NC}"
+            if apt update; then
+                echo -e "${GREEN}✓ 软件源缓存已更新。${NC}"
+            else
+                echo -e "${RED}✗ 软件源更新失败，请检查网络或源配置。${NC}"
                 return 1
             fi
 
-            echo -e "${GREEN}→ 安装软件包...${NC}"
+            # 安装常用软件包
+            echo -e "${GREEN}→ 安装常用软件包...${NC}"
             if ! apt install -y "${DEBIAN_PACKAGES[@]}"; then
                 echo -e "${RED}✗ 部分软件包安装失败，请检查网络、仓库或包名。${NC}"
                 return 1
             fi
-            echo -e "${GREEN}✓ 常用工具软件包如下：${NC}"
+
+            echo -e "${GREEN}✓ 已安装常用软件包如下：${NC}"
             printf "  ${CYAN}%s${NC}\n" "${DEBIAN_PACKAGES[@]}"
             ;;
 
@@ -404,7 +413,7 @@ action_install_docker() {
 
 # -------------------------- RHEL 系容器安装 -------------------------------
 install_docker_rhel() {
-    echo -e "${GREEN}→ 卸载旧版本 Docker / Podman（如有）...${NC}"
+    echo -e "${YELLOW}→ 卸载旧版本 Docker / Podman（如有）...${NC}"
     # 忽略错误（若未安装则跳过）
     dnf remove -y docker \
                   docker-client \
@@ -417,80 +426,86 @@ install_docker_rhel() {
                   podman \
                   runc 2>/dev/null || true
 
-    echo -e "${GREEN}→ 安装 dnf-plugins-core（提供 config-manager）...${NC}"
+    echo -e "${YELLOW}→ 安装 dnf-plugins-core（提供 config-manager）...${NC}"
     if ! dnf -y install dnf-plugins-core; then
         echo -e "${RED}✗ 无法安装 dnf-plugins-core。${NC}"
         return 1
     fi
 
-    echo -e "${GREEN}→ 添加 Docker 官方仓库...${NC}"
+    echo -e "${YELLOW}→ 添加 Docker 官方仓库...${NC}"
     if ! dnf config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.repo; then
         echo -e "${RED}✗ 无法添加 Docker 仓库，请检查网络或系统版本兼容性。${NC}"
         return 1
     fi
 
-    echo -e "${GREEN}→ 安装 Docker Engine 及相关组件...${NC}"
+    echo -e "${YELLOW}→ 安装 Docker Engine 及相关组件...${NC}"
     if ! dnf -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
         echo -e "${RED}✗ Docker 安装失败。${NC}"
         return 1
     fi
 
-    echo -e "${GREEN}→ 启动并启用 Docker 服务...${NC}"
+    echo -e "${YELLOW}→ 启动并启用 Docker 服务...${NC}"
     systemctl enable --now docker
-    echo -e "${GREEN}✓ Docker 已成功安装并启动。${NC}"
+    echo -e "${GREEN}>>> Docker 已成功安装并启动。${NC}"
 
     docker_ver=$(docker --version 2>/dev/null)
-    echo -e "当前 Docker Engine 安装版本：${YELLOW}${docker_ver}${NC}"
+    echo -e "${YELLOW}${docker_ver}${NC}"
 }
 
 install_podman_rhel() {
-    echo -e "${GREEN}→ 更新元数据缓存...${NC}"
-    dnf makecache
+    # 更新元数据缓存
+    echo -e "${YELLOW}→ 正在更新软件包缓存...${NC}"
+    if dnf makecache --assumeyes; then
+        echo -e "${GREEN}✓ 软件源缓存已更新。${NC}"
+    else
+        echo -e "${YELLOW}⚠ 缓存更新失败，但可能不影响使用。${NC}"
+    fi
 
-    echo -e "${GREEN}→ 安装 Podman...${NC}"
+    # 安装podman
+    echo -e "${YELLOW}→ 安装 Podman...${NC}"
     if ! dnf install -y podman; then
         echo -e "${RED}✗ Podman 安装失败。${NC}"
         return 1
     fi
 
     # Podman 无需守护进程，但可验证
-    echo -e "${GREEN}✓ Podman 已成功安装。${NC}"
+    echo -e "${GREEN}>>> Podman 已成功安装。${NC}"
 
     podman_ver=$(podman --version 2>/dev/null)
-    echo -e "当前 Podman 安装版本：${YELLOW}${podman_ver}${NC}"
+    echo -e "${YELLOW}${podman_ver}${NC}"
 }
 
 # -------------------------- Debian 系容器安装 -----------------------------
 install_docker_debian() {
-    echo -e "${GREEN}→ 卸载旧版本 Docker / Podman 相关包（如有）...${NC}"
+    echo -e "${YELLOW}→ 卸载旧版本 Docker / Podman 相关包（如有）...${NC}"
     # 完全按照官方命令：只移除已安装的冲突包
     apt remove -y $(dpkg --get-selections \
         docker.io docker-compose docker-compose-v2 docker-doc \
         podman-docker containerd runc 2>/dev/null | cut -f1) 2>/dev/null || true
 
-    echo -e "${GREEN}→ 更新 APT 软件包列表...${NC}"
+    echo -e "${YELLOW}→ 更新 APT 软件包列表...${NC}"
     if ! apt update; then
         echo -e "${RED}✗ APT 更新失败。${NC}"
         return 1
     fi
 
-    echo -e "${GREEN}→ 安装必要依赖...${NC}"
+    echo -e "${YELLOW}→ 安装必要依赖...${NC}"
     if ! apt install -y ca-certificates curl; then
         echo -e "${RED}✗ 依赖安装失败。${NC}"
         return 1
     fi
 
-    echo -e "${GREEN}→ 创建 keyrings 目录...${NC}"
+    echo -e "${YELLOW}→ 创建 keyrings 目录...${NC}"
     install -m 0755 -d /etc/apt/keyrings
 
-    echo -e "${GREEN}→ 下载并保存 Docker 官方 GPG 密钥（.asc 格式）...${NC}"
+    echo -e "${YELLOW}→ 下载并保存 Docker 官方 GPG 密钥（.asc 格式）...${NC}"
     if ! curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc; then
         echo -e "${RED}✗ 无法下载 Docker GPG 密钥。${NC}"
         return 1
     fi
     chmod a+r /etc/apt/keyrings/docker.asc
 
-    echo -e "${GREEN}→ 添加 Docker APT 仓库（使用 .sources DEB822 格式）...${NC}"
+    echo -e "${YELLOW}→ 添加 Docker APT 仓库（使用 .sources DEB822 格式）...${NC}"
     # 使用官方推荐方式获取 Ubuntu 代号
     if ! . /etc/os-release && [ -n "${UBUNTU_CODENAME:-}" ]; then
         SUITE="$UBUNTU_CODENAME"
@@ -509,40 +524,47 @@ Components: stable
 Signed-By: /etc/apt/keyrings/docker.asc
 EOF
 
-    echo -e "${GREEN}→ 安装 Docker Engine 及相关组件...${NC}"
+    echo -e "${YELLOW}→ 安装 Docker Engine 及相关组件...${NC}"
     if ! apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
         echo -e "${RED}✗ Docker 安装失败。${NC}"
         return 1
     fi
 
-    echo -e "${GREEN}→ 启动并启用 Docker 服务...${NC}"
+    echo -e "${YELLOW}→ 启动并启用 Docker 服务...${NC}"
     systemctl enable --now docker
-    echo -e "${GREEN}✓ Docker 已成功安装并启动。${NC}"
+    echo -e "${GREEN}>>> Docker 已成功安装并启动。${NC}"
 
     docker_ver=$(docker --version 2>/dev/null)
-    echo -e "当前 Docker Engine 安装版本：${YELLOW}${docker_ver}${NC}"
+    echo -e "${YELLOW}${docker_ver}${NC}"
 }
 
 install_podman_debian() {
-    echo -e "${GREEN}→ 更新软件包索引...${NC}"
-    apt update
+    # 更新软件包列表
+    echo -e "${YELLOW}→ 正在更新软件包缓存...${NC}"
+    if apt update; then
+        echo -e "${GREEN}✓ 软件源缓存已更新。${NC}"
+    else
+        echo -e "${RED}✗ 软件源更新失败，请检查网络或源配置。${NC}"
+        return 1
+    fi
 
-    echo -e "${GREEN}→ 安装 Podman...${NC}"
+    # 安装podman
+    echo -e "${YELLOW}→ 安装 Podman...${NC}"
     if ! apt install -y podman; then
         echo -e "${RED}✗ Podman 安装失败（Ubuntu 22.04+ 才有官方支持）。${NC}"
         return 1
     fi
 
-    echo -e "${GREEN}✓ Podman 已成功安装。${NC}"
+    echo -e "${GREEN}>>> Podman 已成功安装。${NC}"
 
     podman_ver=$(podman --version 2>/dev/null)
-    echo -e "当前 Podman 安装版本：${YELLOW}${podman_ver}${NC}"
+    echo -e "${YELLOW}${podman_ver}${NC}"
 }
 
 # ------------------------------ 主菜单 ----------------------------------------
 main_menu() {
     while true; do
-        echo "=============== Linux 系统初始化菜单 ==============="
+        echo -e "${YELLOW}=============== Linux 系统初始化菜单 ===============${NC}"
         echo "1) 关闭防火墙与安全机制"
         echo "2) 启用额外软件仓库"
         echo "3) 安装常用软件包"
@@ -550,7 +572,7 @@ main_menu() {
         echo "5) 安装容器"
         echo "6) 预留功能（未来扩展）"
         echo "q) 退出脚本"
-        echo "=================================================="
+        echo -e "${YELLOW}====================================================${NC}"
 
         read -rp "请选择功能 [1-6/q]: " choice
         echo
