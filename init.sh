@@ -251,6 +251,21 @@ action_install_packages() {
 
             echo -e "${GREEN}✓ 已安装常用软件包如下：${NC}"
             printf "  ${CYAN}%s${NC}\n" "${RHEL_PACKAGES[@]}"
+
+            # 提示是否更新其他软件包
+            read -rp "$(echo -e "${YELLOW}→ 是否更新所有可升级的软件包？[y/N]: ${NC}")" upgrade_choice
+            case "${upgrade_choice,,}" in
+                y|yes)
+                    if dnf upgrade -y; then
+                        echo -e "${GREEN}✓ 所有软件包已更新完成。${NC}"
+                    else
+                        echo -e "${RED}✗ 软件包更新过程中出现错误。${NC}"
+                    fi
+                    ;;
+                *)
+                    echo -e "${GREEN}→ 跳过软件包更新。${NC}"
+                    ;;
+            esac
             ;;
 
         ubuntu|debian)
@@ -272,6 +287,21 @@ action_install_packages() {
 
             echo -e "${GREEN}✓ 已安装常用软件包如下：${NC}"
             printf "  ${CYAN}%s${NC}\n" "${DEBIAN_PACKAGES[@]}"
+
+            # 提示是否进行全系统软件包更新
+            read -rp "$(echo -e "${YELLOW}→ 是否更新所有可升级的软件包？[y/N]: ${NC}")" upgrade_choice
+            case "${upgrade_choice,,}" in
+                y|yes)
+                    if apt upgrade -y; then
+                        echo -e "${GREEN}✓ 所有软件包已更新完成。${NC}"
+                    else
+                        echo -e "${RED}✗ 软件包更新过程中出现错误。${NC}"
+                    fi
+                    ;;
+                *)
+                    echo -e "${GREEN}→ 跳过软件包更新。${NC}"
+                    ;;
+            esac
             ;;
 
         *)
