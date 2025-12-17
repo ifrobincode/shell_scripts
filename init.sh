@@ -292,7 +292,7 @@ action_install_packages() {
             read -rp "$(echo -e "${YELLOW}→ 是否更新所有可升级的软件包？[y/N]: ${NC}")" upgrade_choice
             case "${upgrade_choice,,}" in
                 y|yes)
-                    if apt upgrade -y; then
+                    if apt upgrade -y $(apt list --upgradable --quiet=2 | grep -Ev '^linux-' | cut -d/ -f1); then
                         echo -e "${GREEN}✓ 所有软件包已更新完成。${NC}"
                     else
                         echo -e "${RED}✗ 软件包更新过程中出现错误。${NC}"
