@@ -362,7 +362,7 @@ alias cdnet='cd $CDNET_PATH'
 
 
 # =========== 命令行提示符 ===========
-export PS1="\[\e[37m\][\[\e[32m\]\t \[\e[33m\]\u\[\e[37m\]@\h \[\e[35m\]\W\[\e[37m\]]\[\e[0m\]# "
+export PS1="\[\e[37m\][\[\e[35m\]\t \[\e[31m\]\u\[\e[37m\]@\[\e[33m\]\h \[\e[36m\]\W\[\e[37m\]]\[\e[0m\]# "
 EOF
 
     echo -e "${GREEN}✓ Bash 配置已更新。${NC}"
