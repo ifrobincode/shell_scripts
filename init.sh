@@ -80,6 +80,20 @@ detect_os() {
     fi
 }
 
+# ------------------------------ 获取当前用户目录 -------------------------------
+TARGET_USER="${SUDO_USER:-$(logname 2>/dev/null || whoami)}"
+if [[ "$TARGET_USER" == "root" ]]; then
+    # 如果确实是直接以 root 登录运行（非 sudo），则 TARGET_USER 就是 root
+    TARGET_USER="root"
+fi
+
+# 获取该用户的家目录（更可靠的方式）
+TARGET_HOME=$(getent passwd "$TARGET_USER" | cut -d: -f6)
+if [[ -z "$TARGET_HOME" || ! -d "$TARGET_HOME" ]]; then
+    echo -e "${RED}错误：无法确定目标用户 $TARGET_USER 的家目录。${NC}" >&2
+    exit 1
+fi
+
 # ------------------------------ 显示系统信息 ----------------------------------
 show_system_info() {
     local ip_mask
@@ -332,7 +346,7 @@ action_optimize_config() {
     esac
 
     # --- 一次性写入 /root/.bashrc（history + 别名 + PS1）---
-    cat >> /root/.bashrc << EOF
+    cat >> "$TARGET_HOME/.bashrc" << EOF
 
 # ========== history 增强 ==========
 
@@ -372,7 +386,7 @@ EOF
     echo -e "${GREEN}✓ Bash 配置已更新。${NC}"
 
     # --- 配置 Vim ---
-    cat > /root/.vimrc << 'EOF'
+    cat > "$TARGET_HOME/.vimrc" << 'EOF'
 " ========== Vim 优化配置 ==========
 set number                " 显示行号
 set expandtab             " 将 Tab 转为空格
