@@ -4,5 +4,5 @@ Linux shell scripts
 ## init.sh
 
 ```commandline
-curl -LsSO https://raw.githubusercontent.com/icefire-ken/shell_scripts/main/init.sh
+curl -LsSO https://raw.githubusercontent.com/ifrobincode/shell_scripts/main/init.sh
 ```
