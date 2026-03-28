@@ -52,13 +52,14 @@ PRETTY_NAME=""          # 如：Ubuntu 22.04.4 LTS
 # RHEL 系（Rocky/CentOS/RHEL）
 RHEL_PACKAGES=(
     tree vim bash-completion wget curl lrzsz tcpdump git lsof htop
-    bind-utils iputils
+    bind-utils iputils open-vm-tools-desktop fzf
 )
 
 # Debian 系（Ubuntu/Debian）
 DEBIAN_PACKAGES=(
     tree vim bash-completion wget curl lrzsz tcpdump git lsof htop psmisc
     dnsutils iputils-ping iputils-tracepath iputils-arping iputils-clockdiff
+    open-vm-tools-desktop fzf
 )
 
 # ------------------------------ 权限检查 --------------------------------------
@@ -324,6 +325,30 @@ action_install_packages() {
             ;;
     esac
 
+# -------------------------- 使用非包管理工具方式安装软件包 -------------------------------
+    # 安装 zoxide（严格按照您提供的命令，非 dnf/apt 方式）
+    # 使用 sudo -u 确保安装到目标用户（非 root）的 ~/.local/bin 下
+    echo -e "${BLUE}>>> 正在安装 zoxide（Rust 编写的智能目录跳转工具）...${NC}"
+    echo -e "${YELLOW}→ 执行官方安装脚本（安装到 $TARGET_USER 的 ~/.local/bin）...${NC}"
+    if sudo -u "$TARGET_USER" bash -c 'curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh'; then
+        echo -e "${GREEN}✓ zoxide 安装成功（二进制位于 ~/.local/bin/zoxide）。${NC}"
+    else
+        echo -e "${RED}✗ zoxide 安装失败，请检查网络连接或重试。${NC}"
+        # 不 return 1，继续执行后续步骤（安装失败不阻塞整个函数）
+    fi
+
+    # 配置，将 eval "$(zoxide init bash)" 直接追加到目标用户的 .bashrc
+    echo -e "${YELLOW}→ 正在将 zoxide 配置追加到 $TARGET_USER 的 .bashrc...${NC}"
+    cat >> "$TARGET_HOME/.bashrc" << 'EOF'
+
+# zoxide 智能目录跳转（官方初始化命令）
+# 支持 z / zi / z <目录> 等快捷跳转，基于使用频率 + 模糊匹配
+eval "$(zoxide init bash)"
+EOF
+    echo -e "${GREEN}✓ zoxide 配置已永久写入 .bashrc（新打开终端或执行 source ~/.bashrc 后生效）。${NC}"
+    # ==================== zoxide 安装、配置结束 ====================
+    
+    echo -e "${GREEN}>>> 非包管理工具方式安装的软件包已安装完成。${NC}"
     echo -e "${GREEN}>>> 常用工具安装完成。${NC}"
 }
 
