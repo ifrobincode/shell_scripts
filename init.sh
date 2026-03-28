@@ -1,5 +1,23 @@
 #!/bin/bash
 
+# ----------------------------- Linux 系统初始化脚本 -----------------------------
+# 脚本名称: init.sh
+# 版本信息: version: 2026.03.28.01
+# 更新日期: 2026-03-28
+# 更新内容:
+#   1. 在 Docker 安装成功后，新增显示 docker compose 版本信息
+#   2. 更新主菜单结构：
+#      - 原 "3) 安装常用软件包" 改为 "3) 安装常用软件包（包管理工具安装）"
+#      - 新增 "4) 安装常用软件包（非包管理工具安装）"
+#      - 原 "4) 系统及软件优化" 调整为 "5)"
+#      - 原 "5) 安装容器" 调整为 "6)"
+#      - 新增 "7) 预留功能（未来扩展）"
+#      - 新增 "r) 重启系统"
+#   3. 实现新增的两个功能函数（非包管理工具安装 + 系统重启）
+# 测试系统: Rocky 9.6 / Ubuntu 24.04
+# 作者: Robin
+# 注意: 本脚本必须以 root 权限运行，生产环境使用前请仔细审查并做好备份！
+
 # ----------------------------- 颜色与样式定义 -----------------------------
 
 # --- 前景色（文本颜色）---
@@ -325,31 +343,57 @@ action_install_packages() {
             ;;
     esac
 
-# -------------------------- 使用非包管理工具方式安装软件包 -------------------------------
-    # 安装 zoxide（严格按照您提供的命令，非 dnf/apt 方式）
-    # 使用 sudo -u 确保安装到目标用户（非 root）的 ~/.local/bin 下
-    echo -e "${BLUE}>>> 正在安装 zoxide（Rust 编写的智能目录跳转工具）...${NC}"
-    echo -e "${YELLOW}→ 执行官方安装脚本（安装到 $TARGET_USER 的 ~/.local/bin）...${NC}"
-    if sudo -u "$TARGET_USER" bash -c 'curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh'; then
-        echo -e "${GREEN}✓ zoxide 安装成功（二进制位于 ~/.local/bin/zoxide）。${NC}"
-    else
-        echo -e "${RED}✗ zoxide 安装失败，请检查网络连接或重试。${NC}"
-        # 不 return 1，继续执行后续步骤（安装失败不阻塞整个函数）
+    echo -e "${GREEN}>>> 常用工具安装完成。${NC}"
+}
+
+# -------------------------- 安装常用软件包（非包管理工具） --------------------
+action_install_packages_manual() {
+    echo -e "${BLUE}>>> 正在安装常用软件包（非包管理工具方式）...${NC}"
+    echo -e "${YELLOW}→ 本功能用于通过 curl 等官方安装脚本安装工具${NC}"
+    echo
+
+    # ====================== zoxide 智能目录跳转工具 ======================
+    echo -e "${YELLOW}→ 正在安装 zoxide（智能目录跳转工具）...${NC}"
+
+    # 执行官方安装命令
+    if ! curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh; then
+        echo -e "${RED}✗ zoxide 安装失败，请检查网络连接或稍后重试。${NC}"
+        return 1
     fi
 
-    # 配置，将 eval "$(zoxide init bash)" 直接追加到目标用户的 .bashrc
-    echo -e "${YELLOW}→ 正在将 zoxide 配置追加到 $TARGET_USER 的 .bashrc...${NC}"
-    cat >> "$TARGET_HOME/.bashrc" << 'EOF'
+    echo -e "${GREEN}✓ zoxide 已成功安装到 ~/.local/bin${NC}"
 
-# zoxide 智能目录跳转（官方初始化命令）
-# 支持 z / zi / z <目录> 等快捷跳转，基于使用频率 + 模糊匹配
+    # 确保 ~/.local/bin 在 PATH 中（非常重要！）
+    if ! grep -q 'export PATH="$HOME/.local/bin:$PATH"' "$TARGET_HOME/.bashrc" 2>/dev/null; then
+        echo -e "${YELLOW}→ 正在将 ~/.local/bin 添加到 PATH...${NC}"
+        cat >> "$TARGET_HOME/.bashrc" << 'EOF'
+
+# ========== 本地用户二进制目录 ==========
+# zoxide 等通过 curl 安装的工具默认安装到 ~/.local/bin
+export PATH="$HOME/.local/bin:$PATH"
+EOF
+        echo -e "${GREEN}✓ 已将 ~/.local/bin 添加到 PATH${NC}"
+    fi
+
+    # 自动将 zoxide 配置写入 ~/.bashrc（仅当未配置时追加）
+    if ! grep -q "zoxide init bash" "$TARGET_HOME/.bashrc" 2>/dev/null; then
+        echo -e "${YELLOW}→ 正在配置 zoxide 到 bash...${NC}"
+        cat >> "$TARGET_HOME/.bashrc" << 'EOF'
+
+# ========== zoxide 智能目录跳转 ==========
+# 使用 z 命令快速跳转到常用目录（会自动学习您的使用习惯）
 eval "$(zoxide init bash)"
 EOF
-    echo -e "${GREEN}✓ zoxide 配置已永久写入 .bashrc（新打开终端或执行 source ~/.bashrc 后生效）。${NC}"
-    # ==================== zoxide 安装、配置结束 ====================
-    
-    echo -e "${GREEN}>>> 非包管理工具方式安装的软件包已安装完成。${NC}"
-    echo -e "${GREEN}>>> 常用工具安装完成。${NC}"
+        echo -e "${GREEN}✓ zoxide 已自动添加到 ~/.bashrc${NC}"
+    else
+        echo -e "${GREEN}✓ zoxide 配置已存在，跳过重复添加。${NC}"
+    fi
+
+    echo -e "${GREEN}>>> zoxide 安装与配置完成！${NC}"
+    echo
+
+    echo -e "${GREEN}>>> 非包管理工具常用软件安装流程执行完成。${NC}"
+    echo -e "${YELLOW}提示：如安装了修改 shell 配置的工具，建议重新登录终端或执行 source ~/.bashrc 后生效。${NC}"
 }
 
 # -------------------------- 系统及软件配置优化 -------------------------------
@@ -527,7 +571,9 @@ install_docker_rhel() {
     echo -e "${GREEN}>>> Docker 已成功安装并启动。${NC}"
 
     docker_ver=$(docker --version 2>/dev/null)
+    compose_ver=$(docker compose version 2>/dev/null || echo "未检测到 docker compose 插件")
     echo -e "${YELLOW}${docker_ver}${NC}"
+    echo -e "${YELLOW}${compose_ver}${NC}"
 }
 
 install_podman_rhel() {
@@ -621,7 +667,9 @@ EOF
     echo -e "${GREEN}>>> Docker 已成功安装并启动。${NC}"
 
     docker_ver=$(docker --version 2>/dev/null)
+    compose_ver=$(docker compose version 2>/dev/null || echo "未检测到 docker compose 插件")
     echo -e "${YELLOW}${docker_ver}${NC}"
+    echo -e "${YELLOW}${compose_ver}${NC}"
 }
 
 install_podman_debian() {
@@ -647,32 +695,56 @@ install_podman_debian() {
     echo -e "${YELLOW}${podman_ver}${NC}"
 }
 
+# -------------------------- 重启系统 -----------------------------------------
+action_reboot_system() {
+    echo -e "${YELLOW}⚠ 即将重启系统，请确认所有重要操作已完成！${NC}"
+    read -rp "$(echo -e "${RED}是否立即重启系统？[y/N]: ${NC}")" reboot_choice
+    case "${reboot_choice,,}" in
+        y|yes)
+            echo -e "${BLUE}>>> 系统将在 5 秒后重启...${NC}"
+            sleep 5
+            reboot
+            ;;
+        *)
+            echo -e "${GREEN}→ 已取消重启操作。${NC}"
+            ;;
+    esac
+}
+
 # ------------------------------ 主菜单 ----------------------------------------
 main_menu() {
     while true; do
         echo -e "${YELLOW}=============== Linux 系统初始化菜单 ===============${NC}"
         echo "1) 关闭防火墙与安全机制"
         echo "2) 启用额外软件仓库"
-        echo "3) 安装常用软件包"
-        echo "4) 系统及软件优化"
-        echo "5) 安装容器"
-        echo "6) 预留功能（未来扩展）"
+        echo "3) 安装常用软件包（包管理工具安装）"
+        echo "4) 安装常用软件包（非包管理工具安装）"
+        echo "5) 系统及软件优化"
+        echo "6) 安装容器"
+        echo "7) 预留功能（未来扩展）"
+        echo "r) 重启系统"
         echo "q) 退出脚本"
         echo -e "${YELLOW}====================================================${NC}"
 
-        read -rp "请选择功能 [1-6/q]: " choice
+        read -rp "请选择功能 [1-7/r/q]: " choice
         echo
 
         case "$choice" in
             1) action_disable_security ;;
             2) action_enable_extra_repos ;;
             3) action_install_packages ;;
-            4) action_optimize_config ;;
-            5) action_install_docker ;;
-            6) echo -e "${YELLOW}→ 功能6：预留，暂无操作。${NC}" ;;
-            q|Q) echo -e "${GREEN}已退出脚本。${NC}"; exit 0 ;;
+            4) action_install_packages_manual ;;   # 新增
+            5) action_optimize_config ;;
+            6) action_install_docker ;;
+            7) echo -e "${YELLOW}→ 功能7：预留，暂无操作。${NC}" ;;
+            r|R)
+                action_reboot_system ;;            # 新增
+            q|Q)
+                echo -e "${GREEN}已退出脚本。${NC}"
+                exit 0
+                ;;
             *)
-                echo -e "${RED}无效选项，请输入 1-6 或 q。${NC}"
+                echo -e "${RED}无效选项，请输入 1-7 或 r/q。${NC}"
                 ;;
         esac
         echo
