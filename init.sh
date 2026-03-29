@@ -2,8 +2,8 @@
 
 # ----------------------------- Linux 系统初始化脚本 -----------------------------
 # 脚本名称: init.sh
-# 版本信息: version: 2026.03.28.01
-# 更新日期: 2026-03-28
+# 版本信息: version: 2026.03.29.02
+# 更新日期: 2026-03-29
 # 更新内容:
 #   1. 在 Docker 安装成功后，新增显示 docker compose 版本信息
 #   2. 更新主菜单结构：
@@ -70,14 +70,14 @@ PRETTY_NAME=""          # 如：Ubuntu 22.04.4 LTS
 # RHEL 系（Rocky/CentOS/RHEL）
 RHEL_PACKAGES=(
     tree vim bash-completion wget curl lrzsz tcpdump git lsof htop
-    bind-utils iputils open-vm-tools-desktop fzf
+    bind-utils iputils open-vm-tools-desktop fzf zoxide
 )
 
 # Debian 系（Ubuntu/Debian）
 DEBIAN_PACKAGES=(
     tree vim bash-completion wget curl lrzsz tcpdump git lsof htop psmisc
     dnsutils iputils-ping iputils-tracepath iputils-arping iputils-clockdiff
-    open-vm-tools-desktop fzf
+    open-vm-tools-desktop fzf zoxide
 )
 
 # ------------------------------ 权限检查 --------------------------------------
@@ -352,44 +352,9 @@ action_install_packages_manual() {
     echo -e "${YELLOW}→ 本功能用于通过 curl 等官方安装脚本安装工具${NC}"
     echo
 
-    # ====================== zoxide 智能目录跳转工具 ======================
-    echo -e "${YELLOW}→ 正在安装 zoxide（智能目录跳转工具）...${NC}"
-
-    # 执行官方安装命令
-    if ! curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh; then
-        echo -e "${RED}✗ zoxide 安装失败，请检查网络连接或稍后重试。${NC}"
-        return 1
-    fi
-
-    echo -e "${GREEN}✓ zoxide 已成功安装到 ~/.local/bin${NC}"
-
-    # 确保 ~/.local/bin 在 PATH 中（非常重要！）
-    if ! grep -q 'export PATH="$HOME/.local/bin:$PATH"' "$TARGET_HOME/.bashrc" 2>/dev/null; then
-        echo -e "${YELLOW}→ 正在将 ~/.local/bin 添加到 PATH...${NC}"
-        cat >> "$TARGET_HOME/.bashrc" << 'EOF'
-
-# ========== 本地用户二进制目录 ==========
-# zoxide 等通过 curl 安装的工具默认安装到 ~/.local/bin
-export PATH="$HOME/.local/bin:$PATH"
-EOF
-        echo -e "${GREEN}✓ 已将 ~/.local/bin 添加到 PATH${NC}"
-    fi
-
-    # 自动将 zoxide 配置写入 ~/.bashrc（仅当未配置时追加）
-    if ! grep -q "zoxide init bash" "$TARGET_HOME/.bashrc" 2>/dev/null; then
-        echo -e "${YELLOW}→ 正在配置 zoxide 到 bash...${NC}"
-        cat >> "$TARGET_HOME/.bashrc" << 'EOF'
-
-# ========== zoxide 智能目录跳转 ==========
-# 使用 z 命令快速跳转到常用目录（会自动学习您的使用习惯）
-eval "$(zoxide init bash)"
-EOF
-        echo -e "${GREEN}✓ zoxide 已自动添加到 ~/.bashrc${NC}"
-    else
-        echo -e "${GREEN}✓ zoxide 配置已存在，跳过重复添加。${NC}"
-    fi
-
-    echo -e "${GREEN}>>> zoxide 安装与配置完成！${NC}"
+    # ====================== zoxide 智能目录跳转工具 （临时占位）======================
+    echo -e "${YELLOW}→ 正在安装 zoxide（智能目录跳转工具）...（临时占位）${NC}"
+    echo -e "${GREEN}>>> zoxide 安装与配置完成！（临时占位）${NC}"
     echo
 
     echo -e "${GREEN}>>> 非包管理工具常用软件安装流程执行完成。${NC}"
@@ -414,47 +379,97 @@ action_optimize_config() {
             ;;
     esac
 
-    # --- 一次性写入 /root/.bashrc（history + 别名 + PS1）---
-    cat >> "$TARGET_HOME/.bashrc" << EOF
+    echo -e "${YELLOW}→ 正在配置 Bash 增强功能（避免重复添加）...${NC}"
+
+    # ====================== Bash 配置优化（防重复） ======================
+    local bashrc="$TARGET_HOME/.bashrc"
+    local added=false
+
+    # 1. History 增强配置
+    if ! grep -q "HISTTIMEFORMAT=" "$bashrc" 2>/dev/null; then
+        cat >> "$bashrc" << 'EOF'
 
 # ========== history 增强 ==========
-
 # 设置历史命令的时间格式：年-月-日 时:分:秒 用户名
-# 示例：2024-01-15 14:30:25 username ls -la
 export HISTTIMEFORMAT="%F %T $(whoami) "
 
-# 每次显示命令提示符前自动执行：将当前会话的历史命令追加到历史文件
-# 实现多终端会话实时共享历史记录，防止命令丢失
+# 实时追加历史记录，实现多终端共享
 export PROMPT_COMMAND='history -a'
 
-# 设置当前会话内存中保存的历史命令数量（最多10000条）
+# 历史命令数量设置
 export HISTSIZE=10000
-
-# 设置历史文件(~/.bash_history)中保存的命令数量（最多20000条）
 export HISTFILESIZE=20000
-
-# 控制历史记录的行为：
-# ignoredups - 忽略连续重复的命令（重复命令只记录一次）
-# erasedups  - 删除历史中所有重复的命令（保持历史唯一性）
-# 示例：连续执行3次ls命令，历史中只保留最后一次
 export HISTCONTROL=ignoredups
+EOF
+        added=true
+        echo -e "${GREEN}✓ History 增强配置已添加${NC}"
+    else
+        echo -e "${GREEN}✓ History 增强配置已存在，跳过${NC}"
+    fi
 
+    # 2. 常用别名（cdnet）
+    if ! grep -q "alias cdnet=" "$bashrc" 2>/dev/null; then
+        cat >> "$bashrc" << EOF
 
 # ============ 常用别名 ============
 alias cdnet='cd $CDNET_PATH'
+EOF
+        added=true
+        echo -e "${GREEN}✓ cdnet 别名已添加${NC}"
+    else
+        echo -e "${GREEN}✓ cdnet 别名配置已存在，跳过${NC}"
+    fi
 
+    # 3. 命令行提示符 PS1
+    if ! grep -q "export PS1=" "$bashrc" 2>/dev/null; then
+        cat >> "$bashrc" << 'EOF'
 
 # =========== 命令行提示符 ===========
 export PS1=" 💁 ${GREEN}\u${NC} 💻 ${YELLOW}\h${NC} 📁 ${MAGENTA}\w${NC}\n "
+EOF
+        added=true
+        echo -e "${GREEN}✓ PS1 提示符已优化${NC}"
+    else
+        echo -e "${GREEN}✓ PS1 提示符配置已存在，跳过${NC}"
+    fi
 
+    # 4. LC_TIME 设置（24小时制）
+    if ! grep -q "export LC_TIME=C" "$bashrc" 2>/dev/null; then
+        cat >> "$bashrc" << 'EOF'
 
 # =========== 24小时制 ===========
 export LC_TIME=C
 EOF
+        added=true
+        echo -e "${GREEN}✓ LC_TIME 已设置为 24 小时制${NC}"
+    else
+        echo -e "${GREEN}✓ LC_TIME 配置已存在，跳过${NC}"
+    fi
 
-    echo -e "${GREEN}✓ Bash 配置已更新。${NC}"
+    # 5. zoxide 配置
+    if ! grep -q "zoxide init bash" "$bashrc" 2>/dev/null; then
+        cat >> "$bashrc" << 'EOF'
 
-    # --- 配置 Vim ---
+# ========== zoxide 智能目录跳转 ==========
+# 使用 z 命令快速跳转到常用目录（会根据使用习惯自动学习）
+# 常用用法：
+#   z <关键词>          # 模糊跳转
+#   z -                 # 列出最近访问目录
+#   z -i <关键词>       # 交互式选择
+eval "$(zoxide init bash)"
+EOF
+        added=true
+        echo -e "${GREEN}✓ zoxide 已自动添加到 ~/.bashrc${NC}"
+    else
+        echo -e "${GREEN}✓ zoxide 配置已存在，跳过${NC}"
+    fi
+
+    if [[ "$added" == false ]]; then
+        echo -e "${GREEN}✓ Bash 配置均已存在，无需重复添加${NC}"
+    fi
+
+    # --- 配置 Vim（覆盖式，保持最新配置）---
+    echo -e "${YELLOW}→ 正在配置 Vim...${NC}"
     cat > "$TARGET_HOME/.vimrc" << 'EOF'
 " ========== Vim 优化配置 ==========
 set number                " 显示行号
@@ -462,22 +477,21 @@ set expandtab             " 将 Tab 转为空格
 set tabstop=4             " 1 个 Tab 显示为 4 个空格
 set shiftwidth=4          " 自动缩进时使用 4 个空格
 set autoindent            " 自动缩进
-set softtabstop=4         " 按 Backspace 时删除 4 个空格（模拟 Tab）
-set cursorline            " 光标所在行显示下划线提示
+set softtabstop=4         " 按 Backspace 时删除 4 个空格
+set cursorline            " 光标所在行显示下划线
 set showmatch             " 匹配括号高亮
 set paste                 " 保留格式
 syntax on                 " 启用语法高亮
 filetype plugin indent on " 按文件类型启用智能缩进
 EOF
-
-    echo -e "${GREEN}✓ Vim 配置已更新。${NC}"
+    echo -e "${GREEN}✓ Vim 配置已更新（覆盖模式）${NC}"
 
     # --- 设置时区 ---
+    echo -e "${YELLOW}→ 正在设置系统时区...${NC}"
     timedatectl set-timezone Asia/Shanghai
+    echo -e "${GREEN}✓ Asia/Shanghai 时区已更新${NC}"
 
-    echo -e "${GREEN}✓ Asia/Shanghai 时区已更新。${NC}"
-
-    echo -e "${GREEN}>>> 系统及软件配置优化完成（重新进入终端生效）。${NC}"
+    echo -e "${GREEN}>>> 系统及软件配置优化完成（重新登录终端或 source ~/.bashrc 生效）${NC}"
 }
 
 # -------------------------- 安装容器（Docker / Podman） -----------------------
