@@ -70,14 +70,14 @@ PRETTY_NAME=""          # 如：Ubuntu 22.04.4 LTS
 # RHEL 系（Rocky/CentOS/RHEL）
 RHEL_PACKAGES=(
     tree vim bash-completion wget curl lrzsz tcpdump git lsof htop
-    bind-utils iputils open-vm-tools-desktop fzf zoxide
+    bind-utils iputils open-vm-tools-desktop fzf zoxide lsd
 )
 
 # Debian 系（Ubuntu/Debian）
 DEBIAN_PACKAGES=(
     tree vim bash-completion wget curl lrzsz tcpdump git lsof htop psmisc
     dnsutils iputils-ping iputils-tracepath iputils-arping iputils-clockdiff
-    open-vm-tools-desktop fzf zoxide
+    open-vm-tools-desktop fzf zoxide lsd
 )
 
 # ------------------------------ 权限检查 --------------------------------------
