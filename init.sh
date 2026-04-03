@@ -425,7 +425,7 @@ EOF
         cat >> "$bashrc" << 'EOF'
 
 # =========== 命令行提示符 ===========
-export PS1=" 💁 ${GREEN}\u${NC} 💻 ${YELLOW}\h${NC} 📁 ${MAGENTA}\w${NC}\n "
+export PS1=" 💁 \[\033[0;32m\]\u\[\033[0m\] 💻 \[\033[0;33m\]\h\[\033[0m\] 📁 \[\033[0;35m\]\w\[\033[0m\]\n "
 EOF
         added=true
         echo -e "${GREEN}✓ PS1 提示符已优化${NC}"
